@@ -1,0 +1,28 @@
+# Secrets and local config (never commit)
+config.json
+.env
+.env.*
+!.env.example
+
+# Runtime data (brands, posts, model registry, your Replicate model picks)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Generated images and uploaded brand assets (png, svg, webp, etc.)
+media/*
+!media/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.Python
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log

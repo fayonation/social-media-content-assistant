@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Replicate models{% endblock %}
+{% block body %}
+<h1>Models</h1>
+<p>Pick which models power text (planning, captions), images, and video. Add Replicate models by pasting from the website — no code edits.</p>
+
+<h2>Text models</h2>
+<p>Used for planning, captions, and video briefs. Add a Replicate LLM, or use local Ollama if you prefer.</p>
+<table border="1" cellpadding="6">
+  <tr><th>Active</th><th>Label</th><th>Source</th><th>Actions</th></tr>
+  <tr>
+    <td>{% if ollama_text_active %}<strong>yes</strong>{% else %}
+      <form method="post" action="/models/use-ollama-text" style="display:inline"><button type="submit">Use this</button></form>
+    {% endif %}</td>
+    <td>Ollama (local)</td>
+    <td><code>config.json</code> — <code>ollama_url</code> / <code>ollama_model</code></td>
+    <td class="muted">Requires <code>ollama serve</code></td>
+  </tr>
+  {% for m in text_models %}
+  <tr>
+    <td>{% if not ollama_text_active and m['id'] == active_text %}<strong>yes</strong>{% else %}
+      <form method="post" action="/models/{{ m['id'] }}/activate" style="display:inline"><button type="submit">Use this</button></form>
+    {% endif %}</td>
+    <td>{{ m['label'] or m['slug'] }}</td>
+    <td><a href="https://replicate.com/{{ m['slug'] }}" target="_blank">{{ m['slug'] }}</a></td>
+    <td>
+      <code>{{ m['defaults'] }}</code>
+      <a href="/models/{{ m['id'] }}/edit">Edit</a>
+      <form method="post" action="/models/{{ m['id'] }}/delete" style="display:inline" onsubmit="return confirm('Delete this model?')">
+        <button type="submit">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+<p><a href="/models/new?kind=text">+ Add text model (Replicate)</a></p>
+{% if not text_models and not ollama_text_active %}
+<p class="muted">No text model active yet. Add a Replicate LLM above or activate Ollama (local).</p>
+{% endif %}
+
+<h2>Image models</h2>
+<p><a href="/models/new?kind=image">+ Add image model</a></p>
+{% if image_models %}
+<table border="1" cellpadding="6">
+  <tr><th>Active</th><th>Label</th><th>Slug</th><th>Defaults</th><th>Actions</th></tr>
+  {% for m in image_models %}
+  <tr>
+    <td>{% if m['id'] == active_image %}<strong>yes</strong>{% else %}
+      <form method="post" action="/models/{{ m['id'] }}/activate" style="display:inline"><button type="submit">Use this</button></form>
+    {% endif %}</td>
+    <td>{{ m['label'] or m['slug'] }}</td>
+    <td><a href="https://replicate.com/{{ m['slug'] }}" target="_blank">{{ m['slug'] }}</a></td>
+    <td><code>{{ m['defaults'] }}</code></td>
+    <td>
+      <a href="/models/{{ m['id'] }}/edit">Edit defaults</a>
+      <form method="post" action="/models/{{ m['id'] }}/delete" style="display:inline" onsubmit="return confirm('Delete this model?')">
+        <button type="submit">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>No image models yet. Your config.json fallback may still apply until you add one here.</p>
+{% endif %}
+
+<h2>Video models</h2>
+<p><a href="/models/new?kind=video">+ Add video model</a></p>
+{% if video_models %}
+<table border="1" cellpadding="6">
+  <tr><th>Active</th><th>Label</th><th>Slug</th><th>Defaults</th><th>Actions</th></tr>
+  {% for m in video_models %}
+  <tr>
+    <td>{% if m['id'] == active_video %}<strong>yes</strong>{% else %}
+      <form method="post" action="/models/{{ m['id'] }}/activate" style="display:inline"><button type="submit">Use this</button></form>
+    {% endif %}</td>
+    <td>{{ m['label'] or m['slug'] }}</td>
+    <td><a href="https://replicate.com/{{ m['slug'] }}" target="_blank">{{ m['slug'] }}</a></td>
+    <td><code>{{ m['defaults'] }}</code></td>
+    <td>
+      <a href="/models/{{ m['id'] }}/edit">Edit defaults</a>
+      <form method="post" action="/models/{{ m['id'] }}/delete" style="display:inline" onsubmit="return confirm('Delete this model?')">
+        <button type="submit">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>No video models yet. Video slots will only produce a brief (no clip) until you add one.</p>
+{% endif %}
+
+<p><a href="/">Back to brands</a></p>
+{% endblock %}

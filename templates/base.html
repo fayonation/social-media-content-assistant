@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Social Studio{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <header class="site-header">
+    <nav class="site-nav">
+      <a href="/">Posts</a>
+      <a href="/generate">Generate</a>
+      <a href="/brands">Brands</a>
+      <a href="/models">Models</a>
+    </nav>
+  </header>
+  <main class="site-main">
+    {% block body %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

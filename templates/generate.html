@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Generate post{% endblock %}
+{% block body_class %}generate-page{% endblock %}
+{% block body %}
+<p class="back-link"><a href="/">&larr; Post bank</a></p>
+<h1>Generate post</h1>
+<p class="muted">Start with a seed idea — the AI will brainstorm, critique, polish, then produce caption and visuals.</p>
+
+{% if not brands %}
+<section class="card">
+  <p class="muted">Create a <a href="/brands/new">brand</a> first.</p>
+</section>
+{% else %}
+
+<section id="generate-form-panel" class="generate-layout">
+  <form id="generate-form" class="form-stack generate-form-detailed">
+    <div class="generate-columns">
+      <div class="generate-main card">
+        <h2>Settings</h2>
+        <label>Brand
+          <select name="brand_id" id="gen-brand">
+            {% for b in brands %}
+            <option value="{{ b['id'] }}" {% if selected_brand_id == b['id'] %}selected{% endif %}>{{ b['name'] }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <fieldset class="format-picker">
+          <legend>Format</legend>
+          <label class="format-option">
+            <input type="radio" name="format" value="post" {% if selected_format == 'post' %}checked{% endif %}>
+            <span class="format-card">
+              <strong>Post</strong>
+              <span class="muted">Single 1:1 image, caption + hashtags</span>
+            </span>
+          </label>
+          <label class="format-option">
+            <input type="radio" name="format" value="carousel" {% if selected_format == 'carousel' %}checked{% endif %}>
+            <span class="format-card">
+              <strong>Carousel</strong>
+              <span class="muted">Three 1:1 images, same caption</span>
+            </span>
+          </label>
+          <label class="format-option">
+            <input type="radio" name="format" value="video" {% if selected_format == 'video' %}checked{% endif %}>
+            <span class="format-card">
+              <strong>Video</strong>
+              <span class="muted">2 keyframes + scene brief for Replicate</span>
+            </span>
+          </label>
+        </fieldset>
+
+        <label>Seed idea
+          <textarea name="topic_hint" rows="3" placeholder="e.g. Educate people about why pure beef tallow with no additives is good for skin"></textarea>
+          <span class="hint">Your core intent — the AI will push this into wild, engaging concepts while keeping the facts.</span>
+        </label>
+
+        <details class="optional-fields">
+          <summary>Optional targeting</summary>
+          <label>Audience
+            <input type="text" name="audience" placeholder="e.g. women 30+ interested in natural skincare">
+          </label>
+          <label>Campaign preset
+            <select name="preset">
+              {% for value, label in preset_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </details>
+
+        <input type="hidden" name="refined_plan" id="refined-plan-input" value="">
+        <input type="hidden" name="idea_brief" id="idea-brief-input" value="">
+
+        <div class="generate-actions">
+          <button type="button" class="btn" id="elevate-btn">Elevate idea</button>
+          <button type="submit" class="btn btn-lg" id="generate-submit">Generate full post</button>
+        </div>
+      </div>
+
+      <aside class="generate-side card">
+        <h2>Brand context</h2>
+        <div id="brand-preview">
+          {% for b in brands %}
+          <div class="brand-preview-panel" id="brand-preview-{{ b['id'] }}" {% if selected_brand_id != b['id'] %}hidden{% endif %}>
+            <p><strong>{{ b['name'] }}</strong> · {{ b['language'] }}</p>
+            {% if b['identity_context'] %}
+            <p class="identity-preview">{{ b['identity_context'] }}</p>
+            <p class="hint">Always included in every prompt.</p>
+            {% else %}
+            <p class="muted">No identity paragraph. <a href="/brands/{{ b['id'] }}/edit">Add one</a> for better results.</p>
+            {% endif %}
+            {% if b['visual_style'] %}
+            <p class="hint"><strong>Visual style:</strong> {{ b['visual_style'] }}</p>
+            {% endif %}
+            {% if b['voice_tone'] %}
+            <p class="hint"><strong>Voice:</strong> {{ b['voice_tone'] }}</p>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </aside>
+    </div>
+
+    <section class="card asset-section">
+      <h2>Attach brand assets</h2>
+      <p class="hint">Check assets to send as reference images to Replicate. Identity is always included even with none selected.</p>
+      {% for b in brands %}
+      <div class="asset-pick-grid asset-group" id="assets-brand-{{ b['id'] }}" {% if selected_brand_id != b['id'] %}hidden{% endif %}>
+        {% if assets_by_brand[b['id']] %}
+        {% for a in assets_by_brand[b['id']] %}
+        <label class="asset-pick-card">
+          <input type="checkbox" name="asset_ids" value="{{ a['id'] }}">
+          <img src="{{ a['file_path'] }}" alt="" class="thumb">
+          <span class="asset-pick-meta">
+            <strong>{{ a['label'] }}</strong>
+            <span class="tag">{{ a['kind'] }}</span>
+            {% if a['description'] %}<span class="muted asset-desc">{{ a['description'][:100] }}{% if a['description']|length > 100 %}…{% endif %}</span>{% endif %}
+          </span>
+        </label>
+        {% endfor %}
+        {% else %}
+        <p class="muted">No assets for {{ b['name'] }}. <a href="/brands/{{ b['id'] }}">Upload some</a>.</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </section>
+  </form>
+</section>
+
+<section id="idea-timeline" class="card idea-timeline" hidden>
+  <div class="timeline-header">
+    <div>
+      <h2>Idea pipeline</h2>
+      <p class="muted">Seed → brainstorm → critique → polish → anchor. Edit any step, then regenerate from that point.</p>
+    </div>
+    <div id="timeline-status" class="timeline-status" hidden>
+      <div class="spinner spinner-sm" aria-hidden="true"></div>
+      <span id="timeline-status-text">Working…</span>
+    </div>
+  </div>
+  <div id="timeline-mount" class="timeline-mount"></div>
+  <div id="timeline-footer" class="timeline-footer" hidden>
+    <p class="hint">Happy with the final concept? Generate caption and images next.</p>
+    <button type="button" class="btn btn-lg" id="timeline-generate-btn">Generate full post</button>
+  </div>
+</section>
+
+<section id="generate-progress-panel" class="card progress-panel" hidden>
+  <div class="progress-header">
+    <div class="spinner" aria-hidden="true"></div>
+    <div>
+      <h2 id="progress-title">Working…</h2>
+      <p id="progress-detail" class="progress-detail">Starting…</p>
+    </div>
+  </div>
+  <ol id="progress-steps" class="progress-steps">
+    <li data-step="load"><span class="step-icon"></span><span class="step-label">Load brand &amp; assets</span></li>
+    <li data-step="diverge"><span class="step-icon"></span><span class="step-label">Brainstorm concepts</span></li>
+    <li data-step="critique"><span class="step-icon"></span><span class="step-label">Critique &amp; pick winner</span></li>
+    <li data-step="polish"><span class="step-icon"></span><span class="step-label">Polish brief</span></li>
+    <li data-step="anchor"><span class="step-icon"></span><span class="step-label">Verify intent</span></li>
+    <li data-step="caption"><span class="step-icon"></span><span class="step-label">Write caption</span></li>
+    <li data-step="images"><span class="step-icon"></span><span class="step-label">Generate images</span></li>
+    <li data-step="video" class="step-video-only"><span class="step-icon"></span><span class="step-label">Video brief</span></li>
+    <li data-step="save"><span class="step-icon"></span><span class="step-label">Save draft</span></li>
+  </ol>
+  <p id="progress-error" class="progress-error" hidden></p>
+  <a id="progress-back" href="/generate" class="btn" hidden>Try again</a>
+</section>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/generate.js"></script>
+{% endblock %}

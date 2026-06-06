@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}{{ post['brand_name'] }} — post #{{ post['id'] }}{% endblock %}
+{% block body %}
+<p class="back-link"><a href="/">&larr; Post bank</a></p>
+
+<h1>{{ post['brand_name'] }}</h1>
+<p class="muted">
+  {{ post['format'] or 'post' }}
+  &middot; generated {{ post['created_at'] }}
+  &middot; <span class="tag status-{{ post['status'] }}">{{ post['status'] }}</span>
+  {% if post['is_posted'] %} &middot; <span class="tag posted-yes">posted{% if post['posted_at'] %} {{ post['posted_at'] }}{% endif %}</span>{% endif %}
+</p>
+
+{% if post['topic_hint'] or post['idea_brief_data'] %}
+<section class="card">
+  <h2>Idea</h2>
+  {% if post['topic_hint'] %}
+  <p><strong>Seed:</strong> {{ post['topic_hint'] }}</p>
+  {% endif %}
+  {% if post['idea_brief_data'] and post['idea_brief_data'].get('polished_concept') %}
+  {% set polished = post['idea_brief_data']['polished_concept'] %}
+  <p><strong>Concept:</strong> {{ polished.get('creative_title') or post['plan_data'].get('topic', '') }}</p>
+  {% if polished.get('visual_concept') %}
+  <p class="mono-block">{{ polished['visual_concept'] }}</p>
+  {% endif %}
+  {% endif %}
+  {% if post['idea_brief_data'] and post['idea_brief_data'].get('diverge_candidates') %}
+  <details class="idea-trace">
+    <summary>How we got here</summary>
+    <ul class="idea-trace-list">
+      {% for c in post['idea_brief_data']['diverge_candidates'][:5] %}
+      <li><strong>{{ c.get('title', 'Concept') }}</strong> — {{ c.get('hook', '') }}
+        {% if c.get('visual_gag') %}<span class="muted">({{ c['visual_gag'] }})</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% if post['idea_brief_data'].get('critique', {}).get('winner_title') %}
+    <p class="hint">Winner: {{ post['idea_brief_data']['critique']['winner_title'] }}</p>
+    {% endif %}
+  </details>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>Media pool</h2>
+  <p class="hint">Check which images to include in this post. Regenerating images adds more options — nothing is replaced.</p>
+  {% if post['media_variants'] %}
+  <form method="post" action="/posts/{{ post['id'] }}/media/select" id="media-select-form" class="media-pool-grid">
+    {% for m in post['media_variants'] %}
+    <div class="media-pool-item{% if m['selected'] %} media-pool-selected{% endif %}">
+      <label class="media-pool-label">
+        <input type="checkbox" name="media_ids" value="{{ m['id'] }}" {% if m['selected'] %}checked{% endif %}>
+        <img src="{{ m['path'] }}" alt="" class="media-full">
+        <span class="media-pool-meta">
+          <span class="tag">{{ m['source'] }}</span>
+          {% if m['selected'] %}<span class="tag posted-yes">included</span>{% endif %}
+        </span>
+      </label>
+      <div class="media-pool-actions">
+        <a href="/posts/{{ post['id'] }}/download-media/{{ m['id'] }}" class="btn btn-sm">Download</a>
+        <form method="post" action="/posts/{{ post['id'] }}/media/{{ m['id'] }}/delete" style="display:inline"
+          onsubmit="return confirm('Delete this variant?')">
+          <button type="submit" class="btn btn-sm btn-danger-text">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+    <p><button type="submit" class="btn">Save selection</button></p>
+  </form>
+  {% else %}
+  <p class="muted">No images yet.</p>
+  {% endif %}
+
+  {% if post['brief'] %}
+  <h3>Video</h3>
+  {% if post['brief'].get('video_path') %}
+  <video src="{{ post['brief']['video_path'] }}" class="media-full" controls></video>
+  <p><a href="/posts/{{ post['id'] }}/download-video" class="btn btn-sm icon-text-btn">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l4-4m-4 4L8 11M4 21h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    Download video
+  </a></p>
+  {% endif %}
+  {% if post['brief'].get('video_prompt') %}
+  <p><strong>Video prompt:</strong></p>
+  <p class="mono-block">{{ post['brief']['video_prompt'] }}</p>
+  {% endif %}
+  {% if post['brief'].get('scenes') %}
+  <ol>
+    {% for sc in post['brief']['scenes'] %}
+    <li>{{ sc.get('description', '') }}
+      {% if sc.get('duration_seconds') %}({{ sc['duration_seconds'] }}s){% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="section-header">
+    <h2>Caption</h2>
+    {% if post['caption'] or post['hashtags'] %}
+    <textarea id="caption-copy-src" hidden>{{ caption_copy }}</textarea>
+    <button type="button" class="btn btn-sm icon-text-btn" id="copy-caption">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8a2 2 0 0 1 2 2v14H10a2 2 0 0 1-2-2V4zm2 0v14h8V6h-8zM6 8H4a2 2 0 0 0-2 2v12h10v-2H6V8z"/></svg>
+      Copy caption
+    </button>
+    <span id="copy-feedback" class="copy-feedback" hidden>Copied!</span>
+    {% endif %}
+  </div>
+  {% if post['status'] == 'draft' %}
+  <form method="post" action="/posts/{{ post['id'] }}/edit" class="form-stack">
+    <input type="hidden" name="next" value="detail">
+    <label>Caption
+      <textarea name="caption" rows="8" dir="auto">{{ post['caption'] or '' }}</textarea>
+    </label>
+    <label>Hashtags
+      <input type="text" name="hashtags" dir="auto" value="{{ post['hashtags'] or '' }}">
+    </label>
+    <button type="submit" class="btn">Save edits</button>
+  </form>
+  {% else %}
+  <p class="caption-full" dir="auto" id="caption-text">{{ post['caption'] or '(empty)' }}</p>
+  {% if post['hashtags'] %}<p class="muted" dir="auto" id="hashtags-text">{{ post['hashtags'] }}</p>{% endif %}
+  {% endif %}
+</section>
+
+{% if post['attachments'] %}
+<section class="card">
+  <h2>Assets attached</h2>
+  <ul class="attachment-list">
+    {% for a in post['attachments'] %}
+    <li>
+      <img src="{{ a['file_path'] }}" alt="" class="thumb-xs">
+      <strong>{{ a['label'] }}</strong> <span class="tag">{{ a['kind'] }}</span>
+      {% if a['description'] %}<span class="muted"> — {{ a['description'] }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if post['plan_data'] %}
+<section class="card">
+  <h2>Creative plan</h2>
+  <dl class="plan-dl">
+    {% for key, label in [('topic','Topic'),('angle','Angle'),('hook','Hook'),('visual_style','Visual style'),('cta','CTA'),('image_prompt_en','Image prompt')] %}
+    {% if post['plan_data'].get(key) %}
+    <dt>{{ label }}</dt>
+    <dd{% if key == 'image_prompt_en' %} class="mono-block"{% endif %}>{{ post['plan_data'][key] }}</dd>
+    {% endif %}
+    {% endfor %}
+    {% if post['plan_data'].get('keywords') %}
+    <dt>Keywords</dt>
+    <dd>{{ post['plan_data']['keywords'] | join(', ') }}</dd>
+    {% endif %}
+  </dl>
+</section>
+{% endif %}
+
+{% if post['status'] == 'draft' %}
+<section class="card actions-bar">
+  <form method="post" action="/posts/{{ post['id'] }}/approve" style="display:inline">
+    <input type="hidden" name="next" value="detail">
+    <button type="submit" class="btn">Approve into bank</button>
+  </form>
+  <form method="post" action="/posts/{{ post['id'] }}/regenerate-idea" style="display:inline">
+    <button type="submit" class="btn">Regenerate idea</button>
+  </form>
+  <form method="post" action="/posts/{{ post['id'] }}/regenerate-caption" style="display:inline">
+    <button type="submit" class="btn">Regenerate caption</button>
+  </form>
+  <form method="post" action="/posts/{{ post['id'] }}/regenerate-images" style="display:inline">
+    <button type="submit" class="btn">Regenerate images</button>
+  </form>
+  <form method="post" action="/posts/{{ post['id'] }}/reject" style="display:inline">
+    <button type="submit" class="btn-danger">Reject</button>
+  </form>
+</section>
+{% elif post['status'] == 'approved' %}
+<section class="card actions-bar">
+  {% if post['is_posted'] %}
+  <form method="post" action="/posts/{{ post['id'] }}/unmark-posted" style="display:inline">
+    <button type="submit" class="btn">Unmark posted</button>
+  </form>
+  {% else %}
+  <form method="post" action="/posts/{{ post['id'] }}/mark-posted" style="display:inline">
+    <button type="submit" class="btn">Mark as posted</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card actions-bar">
+  <form method="post" action="/posts/{{ post['id'] }}/delete" style="display:inline"
+    onsubmit="return confirm('Delete this post permanently? Generated media will be removed.')">
+    <button type="submit" class="btn-danger">Delete post</button>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/posts.js"></script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{% if brand %}Edit brand{% else %}New brand{% endif %}{% endblock %}
+{% block body %}
+<h1>{% if brand %}Edit brand{% else %}New brand{% endif %}</h1>
+
+<form method="post" action="{% if brand %}/brands/{{ brand['id'] }}/edit{% else %}/brands/new{% endif %}" class="form-stack">
+  <label>Name
+    <input type="text" name="name" required value="{{ brand['name'] if brand else '' }}">
+  </label>
+
+  <label>Language
+    <select name="language">
+      {% for code, label in [('en','English'),('ar-MA','Arabic (Moroccan Darija)'),('ar','Arabic (Standard)'),('fr','French')] %}
+      <option value="{{ code }}" {% if brand and brand['language']==code %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>Identity paragraph
+    <span class="hint">Always sent to the AI. e.g. "We use argan oil. Posts are always in Darija."</span>
+    <textarea name="identity_context" rows="5">{{ brand['identity_context'] if brand else '' }}</textarea>
+  </label>
+
+  <label>Visual style (colors, mood, aesthetic)
+    <textarea name="visual_style" rows="3">{{ brand['visual_style'] if brand else '' }}</textarea>
+  </label>
+
+  <label>Voice &amp; tone
+    <textarea name="voice_tone" rows="3">{{ brand['voice_tone'] if brand else '' }}</textarea>
+  </label>
+
+  <label>Default hashtags
+    <input type="text" name="hashtags" value="{{ brand['hashtags'] if brand else '' }}">
+  </label>
+
+  <label>Forbidden / overused (avoid these topics, words, styles)
+    <textarea name="forbidden_seeds" rows="3">{{ brand['forbidden_seeds'] if brand else '' }}</textarea>
+  </label>
+
+  <p>
+    <button type="submit" class="btn">{% if brand %}Save changes{% else %}Create brand{% endif %}</button>
+    <a href="{% if brand %}/brands/{{ brand['id'] }}{% else %}/brands{% endif %}">Cancel</a>
+  </p>
+</form>
+
+{% if brand %}
+<p class="muted">Upload logos, characters, and product images from the <a href="/brands/{{ brand['id'] }}">brand hub</a>.</p>
+{% else %}
+<p class="muted">After creating the brand, open its hub to upload visual assets.</p>
+{% endif %}
+{% endblock %}

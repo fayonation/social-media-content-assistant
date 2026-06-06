@@ -1,0 +1,12 @@
+{
+  "replicate_api_token": "r8_paste_your_token_here",
+  "image_model": "openai/gpt-image-2",
+  "image_defaults": { "aspect_ratio": "1:1", "quality": "low", "output_format": "png" },
+  "ollama_url": "http://localhost:11434",
+  "ollama_model": "llama3.1",
+  "text_model": "meta/meta-llama-3-8b-instruct",
+  "text_defaults": { "max_tokens": 2048, "temperature": 0.7 },
+  "video_model": null,
+  "video_defaults": {},
+  "video_api": null
+}

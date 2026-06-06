@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Brands{% endblock %}
+{% block body %}
+<h1>Brands</h1>
+<p><a class="btn" href="/brands/new">+ New brand</a> &middot; <a href="/">Post bank</a></p>
+
+{% if not brands %}
+<p class="muted">No brands yet. Create one to get started.</p>
+{% else %}
+<ul class="brand-list">
+  {% for b in brands %}
+  <li class="card">
+    {% if b['logo_path'] %}<img src="{{ b['logo_path'] }}" alt="logo" class="thumb-sm">{% endif %}
+    <div>
+      <strong><a href="/brands/{{ b['id'] }}">{{ b['name'] }}</a></strong>
+      <span class="muted">({{ b['language'] }})</span>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

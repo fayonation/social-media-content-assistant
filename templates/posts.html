@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Post bank{% endblock %}
+{% block body %}
+<div class="section-header">
+  <h1>Post bank</h1>
+  <a href="{% if filters.brand_id %}/generate?brand_id={{ filters.brand_id }}{% else %}/generate{% endif %}" class="btn">Generate post</a>
+</div>
+<p class="muted">Approve drafts into your bank, copy captions and download media when you publish.</p>
+
+<section class="card">
+  <form method="get" action="/" class="filter-bar">
+    <label>Brand
+      <select name="brand_id">
+        <option value="">All brands</option>
+        {% for b in brands %}
+        <option value="{{ b['id'] }}" {% if filters.brand_id == b['id'] %}selected{% endif %}>{{ b['name'] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Status
+      <select name="status">
+        <option value="" {% if not filters.status %}selected{% endif %}>Active (no rejected)</option>
+        <option value="all" {% if filters.status == 'all' %}selected{% endif %}>All statuses</option>
+        <option value="draft" {% if filters.status == 'draft' %}selected{% endif %}>Draft</option>
+        <option value="approved" {% if filters.status == 'approved' %}selected{% endif %}>Approved</option>
+        <option value="rejected" {% if filters.status == 'rejected' %}selected{% endif %}>Rejected</option>
+      </select>
+    </label>
+    <label>Posted
+      <select name="posted">
+        <option value="" {% if not filters.posted %}selected{% endif %}>All</option>
+        <option value="not_posted" {% if filters.posted == 'not_posted' %}selected{% endif %}>Not posted</option>
+        <option value="posted" {% if filters.posted == 'posted' %}selected{% endif %}>Posted</option>
+      </select>
+    </label>
+    <button type="submit" class="btn">Filter</button>
+  </form>
+
+  {% if not posts %}
+  <p class="muted">No posts match. <a href="/generate">Generate one</a>.</p>
+  {% else %}
+  <table class="data-table posts-table">
+    <thead>
+      <tr>
+        <th>Created</th>
+        <th>Brand</th>
+        <th>Format</th>
+        <th>Status</th>
+        <th>Posted</th>
+        <th>Preview</th>
+        <th>Caption</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in posts %}
+      <tr>
+        <td>{{ p['created_at'] }}</td>
+        <td>{{ p['brand_name'] }}</td>
+        <td>{{ p['format'] or 'post' }}</td>
+        <td><span class="tag status-{{ p['status'] }}">{{ p['status'] }}</span></td>
+        <td>{% if p['is_posted'] %}<span class="tag posted-yes">yes</span>{% else %}<span class="muted">no</span>{% endif %}</td>
+        <td>
+          {% for m in p['media_list'] %}<img src="{{ m }}" alt="" class="thumb-xs">{% endfor %}
+        </td>
+        <td dir="auto" class="caption-snippet">{{ (p['caption'] or '')[:80] }}{% if (p['caption'] or '')|length > 80 %}...{% endif %}</td>
+        <td class="row-actions">
+          <a href="/posts/{{ p['id'] }}" class="icon-btn" title="View post">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5C7 4.5 2.7 7.6 1 12c1.7 4.4 6 7.5 11 7.5s9.3-3.1 11-7.5C21.3 7.6 17 4.5 12 4.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+          </a>
+          <form method="post" action="/posts/{{ p['id'] }}/delete" class="icon-form"
+            onsubmit="return confirm('Delete this post permanently?')">
+            <button type="submit" class="icon-btn icon-btn-danger" title="Delete post">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12zM10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/posts.js"></script>
+{% endblock %}

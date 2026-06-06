@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ brand['name'] }}{% endblock %}
+{% block body %}
+<h1>{{ brand['name'] }}</h1>
+<p class="muted">{{ brand['language'] }}</p>
+
+<div class="actions">
+  <a class="btn" href="/brands/{{ brand['id'] }}/edit">Edit brand</a>
+  <a class="btn" href="/generate?brand_id={{ brand['id'] }}">Generate post</a>
+  <a href="/brands">All brands</a>
+</div>
+
+<section class="card">
+  <h2>Identity context</h2>
+  {% if brand['identity_context'] %}
+  <p class="identity-preview">{{ brand['identity_context'] }}</p>
+  <p class="hint">Always included in every generation prompt.</p>
+  {% else %}
+  <p class="muted">No identity paragraph yet. <a href="/brands/{{ brand['id'] }}/edit">Add one</a> so the AI knows your brand rules.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Visual assets</h2>
+  <p class="hint">Upload logos, characters, products, etc. Check which ones to attach when generating a post.</p>
+
+  {% if assets %}
+  <div class="asset-grid">
+    {% for a in assets %}
+    <div class="asset-card">
+      <img src="{{ a['file_path'] }}" alt="{{ a['label'] }}" class="thumb">
+      <div class="asset-meta">
+        <strong>{{ a['label'] }}</strong>
+        <span class="tag">{{ a['kind'] }}</span>
+        {% if a['description'] %}<p class="muted">{{ a['description'] }}</p>{% endif %}
+        <form method="post" action="/brands/{{ brand['id'] }}/assets/{{ a['id'] }}/delete">
+          <button type="submit" class="btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">No assets yet.</p>
+  {% endif %}
+
+  <h3>Upload asset</h3>
+  <form method="post" action="/brands/{{ brand['id'] }}/assets" enctype="multipart/form-data" class="form-stack">
+    <label>Kind
+      <select name="kind">
+        {% for k in asset_kinds %}
+        <option value="{{ k }}">{{ k }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Label
+      <input type="text" name="label" required placeholder="e.g. Mascot, Argan bottle">
+    </label>
+    <label>Description for AI (optional)
+      <input type="text" name="description" placeholder="e.g. amber glass bottle with gold cap">
+    </label>
+    <label>Image file
+      <input type="file" name="file" accept="image/*" required>
+    </label>
+    <button type="submit" class="btn">Upload</button>
+  </form>
+</section>
+{% endblock %}
