@@ -1,4 +1,4 @@
-"""Social Studio - FastAPI app serving plain HTML pages."""
+"""Social Media Content Assistant — FastAPI app serving plain HTML pages."""
 
 import asyncio
 import json
@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 import db
-from config import BASE_DIR, MEDIA_DIR, new_asset_path, slugify, web_to_fs
+from config import APP_NAME, BASE_DIR, MEDIA_DIR, new_asset_path, slugify, web_to_fs
 from db import ASSET_KINDS
 from model_registry import (
     create_model,
@@ -30,7 +30,7 @@ from model_registry import (
 )
 from providers.text import ProviderError
 
-app = FastAPI(title="Social Studio")
+app = FastAPI(title=APP_NAME)
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 os.makedirs(MEDIA_DIR, exist_ok=True)
@@ -43,7 +43,10 @@ db.init_db()
 
 
 def render(request: Request, template: str, **ctx) -> HTMLResponse:
-    return templates.TemplateResponse(template, {"request": request, **ctx})
+    return templates.TemplateResponse(
+        template,
+        {"request": request, "app_name": APP_NAME, **ctx},
+    )
 
 
 POST_SELECT = """

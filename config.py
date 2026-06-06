@@ -1,6 +1,7 @@
 """Loads runtime configuration from config.json (gitignored).
 
 Copy config.example.json -> config.json and fill in your values.
+Replicate token can also be set via REPLICATE_API_TOKEN (env var wins over config.json).
 """
 
 import json
@@ -16,6 +17,8 @@ MEDIA_DIR = os.path.join(BASE_DIR, "media")
 FONTS_DIR = os.path.join(BASE_DIR, "assets", "fonts")
 ARABIC_FONT = os.path.join(FONTS_DIR, "NotoNaskhArabic.ttf")
 LATIN_FONT = os.path.join(FONTS_DIR, "NotoSans.ttf")
+
+APP_NAME = "Social Media Content Assistant"
 
 DEFAULTS = {
     "replicate_api_token": "",
@@ -72,20 +75,43 @@ class ConfigError(RuntimeError):
     """Raised when configuration is missing or invalid."""
 
 
+def get_replicate_api_token() -> str:
+    """Replicate token: REPLICATE_API_TOKEN env var overrides config.json."""
+    env_token = (os.environ.get("REPLICATE_API_TOKEN") or "").strip()
+    if env_token:
+        return env_token
+    return (get_config().get("replicate_api_token") or "").strip()
+
+
+def fonts_available() -> bool:
+    return os.path.isfile(ARABIC_FONT) and os.path.isfile(LATIN_FONT)
+
+
 @lru_cache(maxsize=1)
 def get_config() -> dict:
-    if not os.path.exists(CONFIG_PATH):
+    data = dict(DEFAULTS)
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            data.update(json.load(f))
+
+    env_token = (os.environ.get("REPLICATE_API_TOKEN") or "").strip()
+    if env_token:
+        data["replicate_api_token"] = env_token
+
+    token = (data.get("replicate_api_token") or "").strip()
+    if not os.path.exists(CONFIG_PATH) and not token:
         raise ConfigError(
-            "config.json not found. Copy config.example.json to config.json and "
-            "fill in your Replicate token and Ollama model."
+            "config.json not found and REPLICATE_API_TOKEN is not set. "
+            "Copy config.example.json to config.json, or export REPLICATE_API_TOKEN."
         )
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return {**DEFAULTS, **data}
+    return data
 
 
 def require(key: str) -> str:
-    value = get_config().get(key)
+    if key == "replicate_api_token":
+        value = get_replicate_api_token()
+    else:
+        value = get_config().get(key)
     if not value:
         raise ConfigError(f"Missing '{key}' in config.json.")
     return value

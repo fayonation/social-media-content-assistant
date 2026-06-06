@@ -1,119 +1,162 @@
 # Social Media Content Assistant
 
-A small, self-hosted **post bank** for social media (internal codename: Social Studio). You set up a brand, generate on-brand posts (AI captions + images + video briefs), approve them, then copy the caption and download images when you publish manually.
+A small, self-hosted **post bank** for social media. You set up a brand, generate on-brand posts (AI captions + images + video briefs), approve them, then copy the caption and download images when you publish manually.
 
-No scheduling, no auto-posting to Instagram, no Docker. Just Python, a local database (SQLite), and a web page in your browser.
+No scheduling, no auto-posting to Instagram. Runs on a **Linux VPS** with Python, SQLite, Nginx, and Certbot — same pattern as [fay-vpn](https://github.com/fayonation/fay-vpn).
 
 ---
 
-## How to run the project (step by step)
+## Run on your server
 
-Follow these steps **in order**. You only do the **one-time setup** once. After that, jump to **“Every time you want to use the app”**.
+You need: Ubuntu VPS, **Nginx** (or Apache) + Certbot, and a subdomain (e.g. `social.example.com`).
 
-### What you need first
+**Not sure what your VPS uses?** Run `./diagnose.sh` first.
 
-1. **A Mac or Linux computer** (these instructions use the Terminal app).
-2. **Python 3** — on Mac, open Terminal and type `python3 --version`. You should see something like `Python 3.12`. If not, install Python from [python.org](https://www.python.org/downloads/).
-3. **A Replicate account** — sign up at [replicate.com](https://replicate.com), then create an API token at [replicate.com/account/api-tokens](https://replicate.com/account/api-tokens). It looks like `r8_...`. You will paste this into a config file below.
+**Before you start (Hostinger hPanel DNS):**
 
-### One-time setup
+- **A record** → your VPS **IPv4**
+- **AAAA** → your VPS IPv6 (`ip -6 addr show scope global`) **or delete AAAA**
+- Wrong AAAA (Hostinger parking) breaks certbot with **404** on acme-challenge
+- Wait 5–30 minutes after DNS changes
 
-**Step 1 — Open Terminal**
+**On the VPS:**
 
-- **Mac:** press `Cmd + Space`, type `Terminal`, press Enter.
-- A window with a command prompt appears. That is where you type the commands below (one line at a time, then press Enter).
+1. **System packages**
+   ```bash
+   apt update
+   apt install -y python3 python3-venv python3-pip git curl nginx certbot python3-certbot-nginx
+   ```
 
-**Step 2 — Go to the project folder**
+2. **Clone**
+   ```bash
+   git clone https://github.com/fayonation/social-media-content-assistant.git
+   cd social-media-content-assistant
+   ```
 
-Replace the path below with wherever you cloned this repo (folder name is usually `social-media-content-assistant`):
+3. **Configure**
+   ```bash
+   cp .env.example .env
+   nano .env
+   ```
+
+   If `cp` gives an empty `.env` (`.env.example` missing after an old clone), create `.env` yourself:
+   ```bash
+   nano .env
+   ```
+   Paste this and edit the two values:
+   ```bash
+   APP_HOST=your-subdomain.example.com
+   PORT=8000
+   REPLICATE_API_TOKEN=r8_your_real_token_here
+   ```
+
+   - `APP_HOST` — your subdomain (no `https://`)
+   - `PORT` — leave `8000` (localhost only; nginx proxies 443 → 8000)
+   - `REPLICATE_API_TOKEN` — from [replicate.com/account/api-tokens](https://replicate.com/account/api-tokens)
+   - Optional: `REVERSE_PROXY=nginx`
+
+4. **Check port 8000** (should be free — not in your Docker list)
+   ```bash
+   chmod +x diagnose.sh fix-nginx-before-certbot.sh setup.sh
+   ./diagnose.sh
+   ss -tlnp | grep 8000
+   ```
+
+5. **HTTPS certificate first** (DNS A record → **this VPS** IP, not Hostinger parking page)
+
+   If certbot says **nginx config test failed** (broken SSL vhost from an earlier attempt):
+   ```bash
+   sudo ./fix-nginx-before-certbot.sh
+   ```
+
+   Then:
+   ```bash
+   sudo certbot certonly --nginx -d YOUR_SUBDOMAIN_HERE
+   ```
+   Use `--apache` instead of `--nginx` only if `diagnose.sh` shows Apache, not Nginx.
+
+   Alternative if nginx still fails:
+   ```bash
+   sudo systemctl stop nginx
+   sudo certbot certonly --standalone -d YOUR_SUBDOMAIN_HERE
+   sudo systemctl start nginx
+   ```
+
+6. **Install and start** (run once, **after** certbot — installs app + nginx + systemd)
+   ```bash
+   sudo ./setup.sh
+   ```
+
+7. **Use**
+   - Browser: `https://YOUR_SUBDOMAIN_HERE`
+   - **Models** (first visit): activate a **text** model and an **image** model
+   - Then: **Brands** → **Generate** → elevate idea → generate full post
+
+8. **Logs / restart**
+   ```bash
+   journalctl -u social-media-content-assistant -f
+   sudo systemctl restart social-media-content-assistant
+   ```
+
+### Updating the app
 
 ```bash
-cd path/to/social-media-content-assistant
+cd social-media-content-assistant
+git pull
+sudo ./setup.sh
 ```
 
-**Step 3 — Create your config file**
+(`setup.sh` reinstalls deps and restarts the service.)
+
+### Local development (optional)
 
 ```bash
-cp config.example.json config.json
-```
-
-**Step 4 — Add your Replicate API token**
-
-Open `config.json` in any text editor (TextEdit, VS Code, etc.). Find this line:
-
-```json
-"replicate_api_token": "r8_paste_your_token_here",
-```
-
-Replace `r8_paste_your_token_here` with your real token. Save the file.
-
-**Step 5 — Create a Python environment and install dependencies**
-
-Copy and paste these two commands, one after the other:
-
-```bash
-python3 -m venv .venv
-```
-
-```bash
-.venv/bin/pip install -r requirements.txt
-```
-
-Wait until the second command finishes (no errors).
-
-**Step 6 — Start the app**
-
-```bash
+cp config.example.json config.json   # or export REPLICATE_API_TOKEN
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ./serve.sh
 ```
 
-You should see something like:
-
-```text
-Uvicorn running on http://127.0.0.1:8000
-```
-
-**Step 7 — Open the app in your browser**
-
-Go to: **http://localhost:8000**
-
-**Step 8 — Turn on AI models (required before generating posts)**
-
-1. In the app, click **Models** in the top menu.
-2. Activate a **text** model (for ideas and captions) — click **Use this** on one Replicate LLM.
-3. Activate an **image** model the same way.
-4. (Optional) Activate a **video** model if you plan to generate video briefs.
-
-Ollama (local AI on your machine) is optional — only use it if you explicitly choose **Ollama (local)** on the Models page.
+`./serve.sh` uses `--reload`. Open **http://localhost:8000**.
 
 ---
 
-### Every time you want to use the app
+## Details
 
-1. Open **Terminal**.
-2. Go to the project folder:
+### Ports
 
-   ```bash
-   cd path/to/social-media-content-assistant
-   ```
+| Port | Exposure | Purpose |
+|------|----------|---------|
+| 8000/tcp | 127.0.0.1 only | FastAPI app (uvicorn) |
+| 443/tcp | Public (Nginx) | HTTPS UI at `https://APP_HOST` |
 
-3. Start the server:
+Port **8000** avoids your existing Docker bindings (3001, 3002, 4000, 5432, 8080, …).
 
-   ```bash
-   ./serve.sh
-   ```
+### Will this break my other apps?
 
-4. Open **http://localhost:8000** in your browser.
+No — adds one systemd service and one Nginx site. Run certbot **before** `setup.sh`.
 
-**To stop the server:** click the Terminal window and press `Ctrl + C`.
+### Troubleshooting
 
-**Different port** (if 8000 is busy):
+| Problem | Fix |
+|---------|-----|
+| certbot nginx test failed | `sudo ./fix-nginx-before-certbot.sh` |
+| certbot unauthorized / 404 | Fix DNS AAAA → VPS IPv6 or remove AAAA |
+| Hostinger default page on subdomain | A record must point to VPS, not Hostinger hosting |
+| App not responding on 8000 | `journalctl -u social-media-content-assistant -n 50` |
+| Generate / elevate hangs behind nginx | SSE timeouts are in `nginx/vhost.conf.template` — re-run `sudo ./setup.sh` |
+| Missing Replicate token | Set `REPLICATE_API_TOKEN` in `.env` |
 
-```bash
-PORT=3000 ./serve.sh
-```
+### Deploy files
 
-Then open **http://localhost:3000** instead.
+| File | Purpose |
+|------|---------|
+| `setup.sh` | Deploy after certbot (venv, systemd, nginx) |
+| `fix-nginx-before-certbot.sh` | Repair nginx before certbot |
+| `diagnose.sh` | Ports + web server + app check |
+| `nginx/vhost.conf.template` | HTTPS reverse proxy to localhost:8000 |
+| `.env.example` | `APP_HOST`, `PORT`, `REPLICATE_API_TOKEN` |
+
+Do not commit `.env`, `config.json`, `*.db`, or `media/*`.
 
 ---
 
@@ -133,7 +176,8 @@ These stay **on your machine only** (already listed in `.gitignore`):
 
 | Ignored | Why |
 |---------|-----|
-| `config.json` | Your Replicate API token |
+| `config.json` | Your Replicate API token (or use `REPLICATE_API_TOKEN` env var) |
+| `.env` | Same — never commit local env files |
 | `*.db` | SQLite database (brands, posts, models you configured) |
 | `media/*` | AI-generated images and brand uploads |
 | `.venv/` | Python packages (reinstall with `pip install -r requirements.txt`) |
@@ -213,7 +257,9 @@ Brand hub → Seed idea → Elevate (idea pipeline) → Generate full post → D
 | **Image** | Post/carousel visuals | Active image model on `/models` |
 | **Video** | Clip generation | Active video model on `/models` |
 
-`config.json` holds `replicate_api_token` and optional default model slugs. Ollama settings are only used when **Ollama (local)** is the active text model.
+`config.json` holds `replicate_api_token` and optional default model slugs. You can also set **`REPLICATE_API_TOKEN`** in the environment (it overrides the config file). Ollama settings are only used when **Ollama (local)** is the active text model.
+
+**Fonts:** `assets/fonts/` ships Noto Sans + Noto Naskh Arabic for Arabic/Latin headline overlays. If missing, `./serve.sh` runs `./scripts/download-fonts.sh` automatically.
 
 ### Project layout (key files)
 
@@ -236,6 +282,10 @@ providers/
 templates/              — Jinja HTML pages
 static/                 — CSS, generate.js (timeline + SSE), posts.js
 serve.sh                — Start dev server (uvicorn --reload)
+setup.sh                — Production deploy (after certbot)
+fix-nginx-before-certbot.sh — HTTP vhost before certbot
+diagnose.sh             — Ports and service check
+nginx/vhost.conf.template — HTTPS proxy (SSE-friendly)
 media/                  — Generated images and uploaded brand assets
 ```
 

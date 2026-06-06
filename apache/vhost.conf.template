@@ -1,0 +1,28 @@
+# Template: setup.sh substitutes __HOST__ and __PORT__
+
+<VirtualHost *:80>
+    ServerName __HOST__
+    Redirect permanent / https://__HOST__/
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName __HOST__
+
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/__HOST__/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/__HOST__/privkey.pem
+    Include /etc/letsencrypt/options-ssl-apache.conf
+
+    ErrorLog ${APACHE_LOG_DIR}/smca-error.log
+    CustomLog ${APACHE_LOG_DIR}/smca-access.log combined
+
+    ProxyPreserveHost On
+    ProxyRequests Off
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-For %{REMOTE_ADDR}s
+
+    ProxyTimeout 3600
+
+    ProxyPass / http://127.0.0.1:__PORT__/
+    ProxyPassReverse / http://127.0.0.1:__PORT__/
+</VirtualHost>

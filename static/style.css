@@ -9,9 +9,25 @@ body {
 }
 
 .site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
   background: #fff;
   border-bottom: 1px solid #e0e0e6;
   padding: 0.75rem 1.25rem;
+}
+
+.site-brand {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #1a1a1a;
+  text-decoration: none;
+  margin-right: auto;
+}
+
+.site-brand:hover {
+  color: #0066cc;
 }
 
 .site-nav a {

@@ -3,7 +3,7 @@
 import httpx
 import replicate
 
-from config import get_config, web_to_fs
+from config import get_replicate_api_token, web_to_fs
 from providers.text import ProviderError
 
 IMAGE_INPUT_HINTS = (
@@ -18,10 +18,11 @@ IMAGE_INPUT_HINTS = (
 
 
 def get_client() -> replicate.Client:
-    token = get_config().get("replicate_api_token")
+    token = get_replicate_api_token()
     if not token or token.startswith("r8_paste"):
         raise ProviderError(
-            "Missing replicate_api_token in config.json. Get one at "
+            "Missing Replicate API token. Set replicate_api_token in config.json "
+            "or REPLICATE_API_TOKEN in the environment. Get one at "
             "https://replicate.com/account/api-tokens."
         )
     return replicate.Client(api_token=token)

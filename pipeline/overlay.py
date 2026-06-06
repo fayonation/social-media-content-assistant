@@ -10,7 +10,8 @@ import arabic_reshaper
 from bidi.algorithm import get_display
 from PIL import Image, ImageDraw, ImageFont
 
-from config import ARABIC_FONT, LATIN_FONT, MEDIA_DIR, new_media_path, web_to_fs
+from config import ARABIC_FONT, FONTS_DIR, LATIN_FONT, MEDIA_DIR, fonts_available, new_media_path, web_to_fs
+from providers.text import ProviderError
 
 
 def _slug_from_web(web_path: str) -> str:
@@ -18,7 +19,16 @@ def _slug_from_web(web_path: str) -> str:
     return parts[1] if len(parts) >= 3 and parts[0] == "media" else "brand"
 
 
+def _require_fonts() -> None:
+    if fonts_available():
+        return
+    raise ProviderError(
+        f"Overlay fonts missing in {FONTS_DIR}. Run: ./scripts/download-fonts.sh"
+    )
+
+
 def _load_font(path: str, size: int) -> ImageFont.FreeTypeFont:
+    _require_fonts()
     font = ImageFont.truetype(path, size)
     for name in ("Bold", "SemiBold", "Medium", "Regular"):
         try:
