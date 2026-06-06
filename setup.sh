@@ -90,11 +90,34 @@ require_tls_cert() {
 PROXY="$(detect_proxy)"
 NGINX_SITE_ENABLED=""
 
+ensure_venv() {
+  if ! python3 -c "import venv" 2>/dev/null; then
+    echo "==> Installing python3-venv (required for virtualenv)"
+    apt-get install -y python3-venv python3-pip
+  fi
+
+  if [[ -d .venv && ! -x .venv/bin/python ]]; then
+    echo "==> Removing broken .venv"
+    rm -rf .venv
+  fi
+
+  if [[ ! -x .venv/bin/python ]]; then
+    echo "==> Creating Python virtualenv"
+    python3 -m venv .venv
+  fi
+
+  if [[ ! -x .venv/bin/python ]]; then
+    echo "ERROR: Could not create .venv/bin/python"
+    echo "Try: apt install -y python3-venv python3-pip && sudo ./setup.sh"
+    exit 1
+  fi
+
+  .venv/bin/python -m pip install -q --upgrade pip
+  .venv/bin/python -m pip install -q -r requirements.txt
+}
+
 echo "==> Installing Python dependencies"
-if [[ ! -d .venv ]]; then
-  python3 -m venv .venv
-fi
-.venv/bin/pip install -q -r requirements.txt
+ensure_venv
 
 if [[ ! -f config.json ]]; then
   cp config.example.json config.json

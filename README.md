@@ -21,7 +21,7 @@ You need: Ubuntu VPS, **Nginx** (or Apache) + Certbot, and a subdomain (e.g. `so
 
 **On the VPS:**
 
-1. **System packages**
+1. **System packages** (`python3-venv` is required — without it `setup.sh` cannot create `.venv`)
    ```bash
    apt update
    apt install -y python3 python3-venv python3-pip git curl nginx certbot python3-certbot-nginx
