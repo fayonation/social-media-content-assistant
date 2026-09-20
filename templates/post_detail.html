@@ -11,6 +11,13 @@
   {% if post['is_posted'] %} &middot; <span class="tag posted-yes">posted{% if post['posted_at'] %} {{ post['posted_at'] }}{% endif %}</span>{% endif %}
 </p>
 
+{% if blocked_reason %}
+<section class="card">
+  <p class="reject-note"><strong>Blocked by the banned-wording guard.</strong> {{ blocked_reason }}</p>
+  <p class="hint">Fix the wording above, then try again. `شحم البقر` is banned everywhere; `دهن البقر` must not lead copy.</p>
+</section>
+{% endif %}
+
 {% if post['topic_hint'] or post['idea_brief_data'] %}
 <section class="card">
   <h2>Idea</h2>
