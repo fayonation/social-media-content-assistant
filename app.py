@@ -98,6 +98,27 @@ def _load_post_detail(conn, post_id: int) -> dict | None:
     return post
 
 
+def _post_copy_violations(post: dict) -> list:
+    """Run the banned-wording guard over every customer-facing field of a post."""
+    from pipeline import copy_guard
+
+    return copy_guard.check_post_copy(
+        plan=post.get("plan_data"),
+        caption=post.get("caption"),
+        hashtags=post.get("hashtags"),
+    )
+
+
+def _blocked_redirect(post_id: int, violations: list) -> RedirectResponse:
+    """Bounce a blocked publish/generate action back with the guard's reason."""
+    from urllib.parse import quote
+
+    from pipeline.copy_guard import CopyRejected
+
+    reason = CopyRejected(violations).reason
+    return RedirectResponse(f"/posts/{post_id}?blocked={quote(reason)}", status_code=303)
+
+
 def _optional_int(value: str | None) -> int | None:
     if not value or not str(value).strip():
         return None
@@ -474,7 +495,13 @@ def post_detail(request: Request, post_id: int):
     caption_copy = post["caption"] or ""
     if post.get("hashtags"):
         caption_copy = f"{caption_copy}\n\n{post['hashtags']}".strip()
-    return render(request, "post_detail.html", post=post, caption_copy=caption_copy)
+    return render(
+        request,
+        "post_detail.html",
+        post=post,
+        caption_copy=caption_copy,
+        blocked_reason=request.query_params.get("blocked", ""),
+    )
 
 
 @app.get("/posts/{post_id}/download/{index}")
@@ -527,6 +554,11 @@ def post_approve(post_id: int, next: str = Form("")):
     from pipeline.memory import record_post
 
     with db.db() as conn:
+        post = _load_post_detail(conn, post_id)
+        if post:
+            violations = _post_copy_violations(post)
+            if violations:
+                return _blocked_redirect(post_id, violations)
         conn.execute("UPDATE post SET status='approved' WHERE id=?", (post_id,))
     record_post(post_id)
     if next == "detail":
@@ -544,9 +576,12 @@ def post_reject(post_id: int):
 @app.post("/posts/{post_id}/mark-posted")
 def post_mark_posted(post_id: int):
     with db.db() as conn:
-        post = conn.execute("SELECT status FROM post WHERE id=?", (post_id,)).fetchone()
+        post = _load_post_detail(conn, post_id)
         if not post or post["status"] != "approved":
             return RedirectResponse(f"/posts/{post_id}", status_code=303)
+        violations = _post_copy_violations(post)
+        if violations:
+            return _blocked_redirect(post_id, violations)
         conn.execute(
             "UPDATE post SET posted=1, posted_at=datetime('now') WHERE id=?",
             (post_id,),
@@ -563,6 +598,11 @@ def post_unmark_posted(post_id: int):
 
 @app.post("/posts/{post_id}/edit")
 def post_edit(post_id: int, caption: str = Form(""), hashtags: str = Form(""), next: str = Form("")):
+    from pipeline import copy_guard
+
+    violations = copy_guard.check_caption(caption, hashtags)
+    if violations:
+        return _blocked_redirect(post_id, violations)
     with db.db() as conn:
         conn.execute(
             "UPDATE post SET caption=?, hashtags=? WHERE id=?", (caption, hashtags, post_id)

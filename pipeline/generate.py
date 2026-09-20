@@ -7,7 +7,7 @@ import json
 from collections.abc import Callable
 
 import db
-from pipeline import captioner, idea_engine, imager, videobrief
+from pipeline import captioner, copy_guard, idea_engine, imager, videobrief
 from providers.text import text_provider_label
 
 ProgressFn = Callable[[str, str], None]
@@ -83,8 +83,11 @@ def _build_post(
         idea_brief=idea_brief,
     )
 
+    copy_guard.assert_plan_clean(plan)
+
     _progress(on_progress, "caption", f"Writing caption and hashtags with {text_label}…")
     caption = captioner.write_caption(brand, plan, selected_assets, idea_brief=brief)
+    copy_guard.assert_copy_clean(caption.get("caption", ""), caption.get("hashtags", ""))
     _progress(on_progress, "caption", "Caption draft complete")
 
     count = imager.FORMAT_COUNTS.get(ctx["format"], 1)
@@ -271,6 +274,8 @@ def regenerate_post_idea(post_id: int, on_progress: ProgressFn | None = None) ->
         on_progress=on_progress,
     )
     caption = captioner.write_caption(brand, plan, post["attachments"], idea_brief=idea_brief)
+    copy_guard.assert_plan_clean(plan)
+    copy_guard.assert_copy_clean(caption.get("caption", ""), caption.get("hashtags", ""))
 
     with db.db() as conn:
         conn.execute(
@@ -295,6 +300,7 @@ def regenerate_post_caption(post_id: int) -> None:
         post["attachments"],
         idea_brief=post.get("idea_brief_data"),
     )
+    copy_guard.assert_copy_clean(caption.get("caption", ""), caption.get("hashtags", ""))
     with db.db() as conn:
         conn.execute(
             "UPDATE post SET caption=?, hashtags=? WHERE id=?",

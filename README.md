@@ -210,6 +210,28 @@ Brand hub → Seed idea → Elevate (idea pipeline) → Generate full post → D
 - **Media pool**: regenerating images **appends** variants; post detail uses checkboxes to select which files are included.
 - **Split regenerate** on drafts: re-run idea, caption, or images independently without throwing away the whole post.
 
+### Banned-wording guard (`pipeline/copy_guard.py`)
+
+Deterministic guard that rejects customer-facing copy carrying banned wording,
+with a clear reason, before anything is generated, approved, or published:
+
+- **`شحم البقر`** — banned on every customer-facing surface (caption, hook,
+  on-image text, alt text, hashtags, CTA).
+- **`دهن البقر`** — banned on **front-facing** surfaces (hook, on-image text,
+  CTA, hashtags, caption's first line); allowed once in detailed /
+  educational / ingredient caption body.
+
+It runs automatically in the generation flow (before image generation), on the
+`approve`, `mark-posted` and caption-edit publish gates, and on the on-image
+overlay headline. Check copy manually:
+
+```bash
+python -m pipeline.copy_guard --surface on_image --text "…"
+printf '%s' "$caption" | python -m pipeline.copy_guard --surface hook
+```
+
+Exit code `0` = accepted, `1` = rejected with the rule and term named.
+
 ### Pages and routes
 
 | URL | Page | Purpose |

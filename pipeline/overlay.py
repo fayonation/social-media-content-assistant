@@ -11,6 +11,7 @@ from bidi.algorithm import get_display
 from PIL import Image, ImageDraw, ImageFont
 
 from config import ARABIC_FONT, FONTS_DIR, LATIN_FONT, MEDIA_DIR, fonts_available, new_media_path, web_to_fs
+from pipeline import copy_guard
 from providers.text import ProviderError
 
 
@@ -62,6 +63,7 @@ def _wrap(draw, text: str, font, max_width: int) -> list[str]:
 
 
 def apply_overlay(base_web_path: str, headline: str, logo_web_path: str | None, rtl: bool) -> str:
+    copy_guard.assert_text_clean(headline, "on_image")
     base = Image.open(web_to_fs(base_web_path)).convert("RGBA")
     W, H = base.size
     draw = ImageDraw.Draw(base)
